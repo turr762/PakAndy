@@ -2,16 +2,21 @@ import streamlit as st
 from google import genai
 from PIL import Image
 
-# Konfigurasi Halaman
-st.set_page_config(page_title="Gizi Tracker AI", page_icon="🥗", layout="centered")
+st.set_page_config(page_title="Gizi Tracker", page_icon="🥗", layout="centered")
 
-# Mengambil API Key dari Streamlit Secrets (jika di-deploy) atau Session State
-SECRET_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
-st.title("🥗 Gizi Tracker AI")
+
+SECRET_KEY = st.secrets.get("GEMINI_API_KEY", "")
+
+if not SECRET_KEY:
+    st.error("⚠️ GEMINI_API_KEY belum diatur di Streamlit Secrets!")
+
+
+client = genai.Client(api_key=SECRET_KEY)
+
+st.title("Gizi Tracke")
 st.write("Upload atau ambil foto makanan untuk menganalisis kandungan gizinya.")
 
-# Pilihan sumber gambar: Galeri atau Kamera
 option = st.radio("Pilih sumber gambar:", ("Upload dari Galeri", "Kamera Langsung"))
 
 image = None
@@ -25,62 +30,49 @@ else:
     if camera_photo:
         image = Image.open(camera_photo)
 
-# Jika gambar sudah dimuat
 if image is not None:
-    st.image(image, caption="Gambar Makanan", use_container_width=True)
+    st.image(image, use_container_width=True)
     
     if st.button("🔍 Analisis Gizi"):
-        # Prioritaskan API Key dari Secrets, lalu dari input manual jika ada
-        api_key_to_use = SECRET_API_KEY
-        
-        if not api_key_to_use:
-            st.error("⚠️ API Key belum dikonfigurasi di Streamlit Secrets.")
-        else:
-            with st.spinner("Sedang menganalisis gizi makanan dengan Gemini AI..."):
+        with st.spinner("Sedang menganalisis gizi makanan..."):
+            
+            prompt = """
+            Analisis makanan dalam gambar ini secara mendetail:
+            1. Nama Makanan / Hidangan.
+            2. Perkiraan Porsi.
+            3. Perkiraan Total Kalori (kcal).
+            4. Rincian Makronutrisi:
+               - Karbohidrat (gram)
+               - Protein (gram)
+               - Lemak (gram)
+            5. Ringkasan singkat apakah makanan ini seimbang dan saran kesehatan.
+            
+            Gunakan format yang rapi dan mudah dibaca.
+            """
+            
+            
+            candidate_models = [
+                "gemini-2.5-flash",
+                "gemini-2.0-flash",
+                "gemini-1.5-flash"
+            ]
+            
+            response = None
+            used_model = ""
+            
+            for model_name in candidate_models:
                 try:
-                    client = genai.Client(api_key=api_key_to_use)
-                    
-                    prompt = """
-                    Analisis makanan dalam gambar ini secara mendetail:
-                    1. Nama Makanan / Hidangan.
-                    2. Perkiraan Porsi.
-                    3. Perkiraan Total Kalori (kcal).
-                    4. Rincian Makronutrisi:
-                       - Karbohidrat (gram)
-                       - Protein (gram)
-                       - Lemak (gram)
-                    5. Ringkasan singkat apakah makanan ini seimbang dan saran kesehatan.
-                    
-                    Gunakan format yang rapi dan mudah dibaca (bullet points / tabel).
-                    """
-                    
-                    # Daftar model yang dicoba secara otomatis
-                    candidate_models = [
-                        "gemini-2.5-flash",
-                        "gemini-2.0-flash",
-                        "gemini-1.5-flash"
-                    ]
-                    
-                    response = None
-                    used_model = ""
-                    
-                    for model_name in candidate_models:
-                        try:
-                            response = client.models.generate_content(
-                                model=model_name,
-                                contents=[image, prompt]
-                            )
-                            used_model = model_name
-                            break
-                        except Exception:
-                            continue
-                    
-                    if response is not None:
-                        st.success(f"Analisis Selesai! (Model: {used_model})")
-                        st.markdown("### Hasil Analisis Gizi")
-                        st.write(response.text)
-                    else:
-                        st.error("Gagal terhubung dengan API. Pastikan API key aktif.")
-                        
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=[image, prompt]
+                    )
+                    used_model = model_name
+                    break
                 except Exception as e:
-                    st.error(f"Terjadi kesalahan saat menghubungi API: {e}")
+                    continue
+            
+            if response is not None:
+                st.markdown("### Hasil Analisis Gizi")
+                st.write(response.text)
+            else:
+                st.error("Gagal terhubung dengan semua model. Pastikan API key dan kuota API aktif.")
