@@ -6,6 +6,7 @@ import io
 
 st.set_page_config(page_title="Gizi Tracker AI", page_icon="🥗", layout="centered")
 
+# Mengambil OpenRouter API Key dari Streamlit Secrets
 API_KEY = st.secrets.get("OPENROUTER_API_KEY", "").strip()
 
 st.title("🥗 Gizi Tracker AI")
@@ -31,9 +32,9 @@ if image is not None:
         if not API_KEY:
             st.error("⚠️ OPENROUTER_API_KEY belum diatur di Streamlit Secrets!")
         else:
-            with st.spinner("Sedang menganalisis gizi makanan..."):
+            with st.spinner("Sedang menganalisis gizi makanan dengan AI..."):
                 try:
-                    # Konversi gambar ke format JPEG & base64
+                    # Konversi gambar ke JPEG & base64
                     buffered = io.BytesIO()
                     image.convert("RGB").save(buffered, format="JPEG")
                     img_str = base64.b64encode(buffered.getvalue()).decode()
@@ -42,49 +43,72 @@ if image is not None:
                         "Authorization": f"Bearer {API_KEY}",
                         "Content-Type": "application/json"
                     }
-                    
-                    payload = {
-                        "model": "google/gemini-2.0-flash-lite-001",
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": [
-                                    {
-                                        "type": "text",
-                                        "text": """
-                                        Analisis makanan dalam gambar ini secara mendetail:
-                                        1. Nama Makanan / Hidangan.
-                                        2. Perkiraan Porsi.
-                                        3. Perkiraan Total Kalori (kcal).
-                                        4. Rincian Makronutrisi:
-                                           - Karbohidrat (gram)
-                                           - Protein (gram)
-                                           - Lemak (gram)
-                                        5. Ringkasan singkat apakah makanan ini seimbang dan saran kesehatan.
-                                        
-                                        Gunakan format yang rapi dan mudah dibaca dalam bahasa Indonesia.
-                                        """
-                                    },
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {
-                                            "url": f"data:image/jpeg;base64,{img_str}"
+
+                    # Daftar model Gemini gratis di OpenRouter dengan fallback
+                    candidate_models = [
+                        "google/gemini-2.0-flash-exp:free",
+                        "google/gemini-flash-1.5-8b",
+                        "meta-llama/llama-3.2-11b-vision-instruct:free"
+                    ]
+
+                    prompt_text = """
+                    Analisis makanan dalam gambar ini secara mendetail dalam bahasa Indonesia:
+                    1. Nama Makanan / Hidangan.
+                    2. Perkiraan Porsi.
+                    3. Perkiraan Total Kalori (kcal).
+                    4. Rincian Makronutrisi:
+                       - Karbohidrat (gram)
+                       - Protein (gram)
+                       - Lemak (gram)
+                    5. Ringkasan singkat apakah makanan ini seimbang dan saran kesehatan.
+
+                    Gunakan format yang rapi dan mudah dibaca.
+                    """
+
+                    result = None
+                    used_model = ""
+                    last_error_msg = ""
+
+                    for model_name in candidate_models:
+                        payload = {
+                            "model": model_name,
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": [
+                                        {"type": "text", "text": prompt_text},
+                                        {
+                                            "type": "image_url",
+                                            "image_url": {
+                                                "url": f"data:image/jpeg;base64,{img_str}"
+                                            }
                                         }
-                                    }
-                                ]
-                            }
-                        ]
-                    }
+                                    ]
+                                }
+                            ]
+                        }
 
-                    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
-                    result = response.json()
+                        response = requests.post(
+                            "https://openrouter.ai/api/v1/chat/completions",
+                            headers=headers,
+                            json=payload
+                        )
+                        
+                        res_json = response.json()
 
-                    if "choices" in result and len(result["choices"]) > 0:
-                        st.success("Analisis Selesai!")
+                        if "choices" in res_json and len(res_json["choices"]) > 0:
+                            result = res_json
+                            used_model = model_name
+                            break
+                        else:
+                            last_error_msg = str(res_json)
+
+                    if result:
+                        st.success(f"Analisis Selesai! (Model: {used_model})")
                         st.markdown("### Hasil Analisis Gizi")
                         st.write(result["choices"][0]["message"]["content"])
                     else:
-                        st.error(f"Gagal memproses. Respon server: {result}")
+                        st.error(f"Gagal memproses dengan model pilihan. Error: {last_error_msg}")
 
                 except Exception as e:
-                    st.error(f"Terjadi kesalahan: {e}")
+                    st.error(f"Terjadi kesalahan sistem: {e}")
