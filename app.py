@@ -1,15 +1,14 @@
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 from PIL import Image
 
 st.set_page_config(page_title="Gizi Tracker AI", page_icon="🥗", layout="centered")
 
-# Mengambil API Key dari Streamlit Secrets (untuk deploy) 
-# atau fallback ke API_KEY bawaan jika dijalankan lokal
+# Mengambil API Key Service Account milikmu
 API_KEY = st.secrets.get("GEMINI_API_KEY", "AQ.Ab8RN6K_lT8VsFXit1A6n1_4iLFKgn-D02ur7UgGSfRZ-FrqrA")
 
-# Inisialisasi client Gemini
-client = genai.Client(api_key=API_KEY)
+# Konfigurasi library google-generativeai
+genai.configure(api_key=API_KEY)
 
 st.title("🥗 Gizi Tracker AI")
 st.write("Upload atau ambil foto makanan untuk menganalisis kandungan gizinya.")
@@ -47,10 +46,10 @@ if image is not None:
             Gunakan format yang rapi dan mudah dibaca.
             """
             
-            # Menggunakan daftar nama model resmi terbaru yang aktif
+            # Daftar model yang dicoba untuk GenerativeModel
             candidate_models = [
-                "gemini-2.5-flash",
-                "gemini-1.5-flash"
+                "gemini-1.5-flash",
+                "gemini-1.5-pro"
             ]
             
             response = None
@@ -59,10 +58,8 @@ if image is not None:
             
             for model_name in candidate_models:
                 try:
-                    response = client.models.generate_content(
-                        model=model_name,
-                        contents=[image, prompt]
-                    )
+                    model = genai.GenerativeModel(model_name)
+                    response = model.generate_content([prompt, image])
                     used_model = model_name
                     break
                 except Exception as e:
