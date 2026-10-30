@@ -4,17 +4,14 @@ from PIL import Image
 
 st.set_page_config(page_title="Gizi Tracker", page_icon="🥗", layout="centered")
 
+# Mengambil API Key dari Streamlit Secrets (untuk deploy) 
+# atau fallback ke API_KEY bawaan jika dijalankan lokal
+API_KEY = st.secrets.get("GEMINI_API_KEY", "AQ.Ab8RN6K_lT8VsFXit1A6n1_4iLFKgn-D02ur7UgGSfRZ-FrqrA")
 
+# Inisialisasi client Gemini
+client = genai.Client(api_key=API_KEY)
 
-SECRET_KEY = st.secrets.get("GEMINI_API_KEY", "")
-
-if not SECRET_KEY:
-    st.error("⚠️ GEMINI_API_KEY belum diatur di Streamlit Secrets!")
-
-
-client = genai.Client(api_key=SECRET_KEY)
-
-st.title("Gizi Tracke")
+st.title("🥗 Gizi Tracker")
 st.write("Upload atau ambil foto makanan untuk menganalisis kandungan gizinya.")
 
 option = st.radio("Pilih sumber gambar:", ("Upload dari Galeri", "Kamera Langsung"))
@@ -31,9 +28,9 @@ else:
         image = Image.open(camera_photo)
 
 if image is not None:
-    st.image(image, use_container_width=True)
+    st.image(image, caption="Gambar Makanan", use_container_width=True)
     
-    if st.button("🔍 Analisis Gizi"):
+    if st.button("Analisis Gizi"):
         with st.spinner("Sedang menganalisis gizi makanan..."):
             
             prompt = """
@@ -50,15 +47,15 @@ if image is not None:
             Gunakan format yang rapi dan mudah dibaca.
             """
             
-            
+            # Menggunakan daftar nama model resmi terbaru yang aktif
             candidate_models = [
                 "gemini-2.5-flash",
-                "gemini-2.0-flash",
                 "gemini-1.5-flash"
             ]
             
             response = None
             used_model = ""
+            last_error = ""
             
             for model_name in candidate_models:
                 try:
@@ -69,10 +66,12 @@ if image is not None:
                     used_model = model_name
                     break
                 except Exception as e:
+                    last_error = str(e)
                     continue
             
             if response is not None:
+                
                 st.markdown("### Hasil Analisis Gizi")
                 st.write(response.text)
             else:
-                st.error("Gagal terhubung dengan semua model. Pastikan API key dan kuota API aktif.")
+                st.error(f"Gagal terhubung dengan API. Detail error: {last_error}")
