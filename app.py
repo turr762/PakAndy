@@ -1,9 +1,9 @@
 import streamlit as st
 import vertexai
-from vertexai.generative_models import GenerativeModel, Image as VertexImage
+from vertexai.generative_models import GenerativeModel, Part
 from google.oauth2 import service_account
 import io
-from PIL import Image
+from PIL import Image as PILImage
 
 st.set_page_config(page_title="Gizi Tracker AI", page_icon="🥗", layout="centered")
 
@@ -37,11 +37,11 @@ image = None
 if option == "Upload dari Galeri":
     uploaded_file = st.file_uploader("Pilih gambar dari galeri", type=["jpg", "jpeg", "png", "webp"])
     if uploaded_file:
-        image = Image.open(uploaded_file)
+        image = PILImage.open(uploaded_file)
 else:
     camera_photo = st.camera_input("Ambil foto makanan")
     if camera_photo:
-        image = Image.open(camera_photo)
+        image = PILImage.open(camera_photo)
 
 if image is not None:
     st.image(image, caption="Gambar Makanan", use_container_width=True)
@@ -49,12 +49,17 @@ if image is not None:
     if st.button("🔍 Analisis Gizi") and is_ready:
         with st.spinner("Sedang menganalisis gizi makanan via Vertex AI..."):
             try:
-                # Konversi gambar PIL ke bytes untuk Vertex AI Image
+                # Konversi gambar Pillow ke bytes & buat objek Part dari Vertex AI
                 img_byte_arr = io.BytesIO()
-                image.save(img_byte_arr, format=image.format if image.format else "JPEG")
+                img_format = image.format if image.format else "JPEG"
+                image.save(img_byte_arr, format=img_format)
                 img_bytes = img_byte_arr.getvalue()
                 
-                vertex_image = VertexImage.from_data(img_bytes)
+                # Menggunakan Part.from_data untuk data gambar biner
+                image_part = Part.from_data(
+                    data=img_bytes,
+                    mime_type=f"image/{img_format.lower()}"
+                )
 
                 prompt = """
                 Analisis makanan dalam gambar ini secara mendetail:
@@ -70,9 +75,9 @@ if image is not None:
                 Gunakan format yang rapi dan mudah dibaca.
                 """
 
-                # Menggunakan model Gemini resmi di Vertex AI
+                # Menggunakan model Gemini 1.5 Flash aktif di Vertex AI
                 model = GenerativeModel("gemini-1.5-flash-002")
-                response = model.generate_content([vertex_image, prompt])
+                response = model.generate_content([image_part, prompt])
 
                 if response and response.text:
                     st.success("Analisis Selesai! (Vertex AI)")
