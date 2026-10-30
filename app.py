@@ -44,11 +44,12 @@ if image is not None:
                         "Content-Type": "application/json"
                     }
 
-                    # Daftar model Gemini gratis di OpenRouter dengan fallback
+                    # Daftar model Vision aktif di OpenRouter
                     candidate_models = [
                         "google/gemini-2.0-flash-exp:free",
-                        "google/gemini-flash-1.5-8b",
-                        "meta-llama/llama-3.2-11b-vision-instruct:free"
+                        "google/gemini-flash-1.5-exp",
+                        "qwen/qwen-2-vl-72b-instruct:free",
+                        "openrouter/auto"
                     ]
 
                     prompt_text = """
