@@ -1,17 +1,27 @@
 import streamlit as st
 import google.generativeai as genai
+from google.oauth2 import service_account
 from PIL import Image
 
 st.set_page_config(page_title="Gizi Tracker AI", page_icon="🥗", layout="centered")
 
-# Mengambil API Key Service Account milikmu
-API_KEY = st.secrets.get("GEMINI_API_KEY", "AQ.Ab8RN6K_lT8VsFXit1A6n1_4iLFKgn-D02ur7UgGSfRZ-FrqrA")
-
-# Konfigurasi library google-generativeai
-genai.configure(api_key=API_KEY)
-
 st.title("🥗 Gizi Tracker AI")
 st.write("Upload atau ambil foto makanan untuk menganalisis kandungan gizinya.")
+
+# Menghubungkan Autentikasi Service Account dari Streamlit Secrets
+@st.cache_resource
+def init_gemini():
+    if "gcp_service_account" in st.secrets:
+        creds_info = dict(st.secrets["gcp_service_account"])
+        credentials = service_account.Credentials.from_service_account_info(
+            creds_info,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        genai.configure(credentials=credentials)
+    else:
+        st.error("⚠️ Service Account credentials belum diatur di Streamlit Secrets.")
+
+init_gemini()
 
 option = st.radio("Pilih sumber gambar:", ("Upload dari Galeri", "Kamera Langsung"))
 
@@ -46,7 +56,6 @@ if image is not None:
             Gunakan format yang rapi dan mudah dibaca.
             """
             
-            # Daftar model yang dicoba untuk GenerativeModel
             candidate_models = [
                 "gemini-1.5-flash",
                 "gemini-1.5-pro"
