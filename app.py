@@ -2,7 +2,7 @@ import streamlit as st
 from google import genai
 from PIL import Image
 
-st.set_page_config(page_title="Gizi Tracker", page_icon="🥗", layout="centered")
+st.set_page_config(page_title="Gizi Tracker AI", page_icon="🥗", layout="centered")
 
 # Mengambil API Key dari Streamlit Secrets (untuk deploy) 
 # atau fallback ke API_KEY bawaan jika dijalankan lokal
@@ -11,7 +11,7 @@ API_KEY = st.secrets.get("GEMINI_API_KEY", "AQ.Ab8RN6K_lT8VsFXit1A6n1_4iLFKgn-D0
 # Inisialisasi client Gemini
 client = genai.Client(api_key=API_KEY)
 
-st.title("🥗 Gizi Tracker")
+st.title("🥗 Gizi Tracker AI")
 st.write("Upload atau ambil foto makanan untuk menganalisis kandungan gizinya.")
 
 option = st.radio("Pilih sumber gambar:", ("Upload dari Galeri", "Kamera Langsung"))
@@ -30,7 +30,7 @@ else:
 if image is not None:
     st.image(image, caption="Gambar Makanan", use_container_width=True)
     
-    if st.button("Analisis Gizi"):
+    if st.button("🔍 Analisis Gizi"):
         with st.spinner("Sedang menganalisis gizi makanan..."):
             
             prompt = """
@@ -70,7 +70,7 @@ if image is not None:
                     continue
             
             if response is not None:
-                
+                st.success(f"Analisis Selesai! (Model: {used_model})")
                 st.markdown("### Hasil Analisis Gizi")
                 st.write(response.text)
             else:
