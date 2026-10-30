@@ -1,16 +1,15 @@
 import streamlit as st
-import google.generativeai as genai
+import requests
+import base64
 from PIL import Image
+import io
 
 st.set_page_config(page_title="Gizi Tracker AI", page_icon="🥗", layout="centered")
 
-API_KEY = st.secrets.get("GEMINI_API_KEY", "")
+API_KEY = st.secrets.get("OPENROUTER_API_KEY", "").strip()
 
 st.title("🥗 Gizi Tracker AI")
 st.write("Upload atau ambil foto makanan untuk menganalisis kandungan gizinya.")
-
-if API_KEY:
-    genai.configure(api_key=API_KEY)
 
 option = st.radio("Pilih sumber gambar:", ("Upload dari Galeri", "Kamera Langsung"))
 
@@ -30,33 +29,62 @@ if image is not None:
     
     if st.button("🔍 Analisis Gizi"):
         if not API_KEY:
-            st.error("⚠️ GEMINI_API_KEY belum diatur di Streamlit Secrets!")
+            st.error("⚠️ OPENROUTER_API_KEY belum diatur di Streamlit Secrets!")
         else:
             with st.spinner("Sedang menganalisis gizi makanan..."):
                 try:
-                    prompt = """
-                    Analisis makanan dalam gambar ini secara mendetail:
-                    1. Nama Makanan / Hidangan.
-                    2. Perkiraan Porsi.
-                    3. Perkiraan Total Kalori (kcal).
-                    4. Rincian Makronutrisi:
-                       - Karbohidrat (gram)
-                       - Protein (gram)
-                       - Lemak (gram)
-                    5. Ringkasan singkat apakah makanan ini seimbang dan saran kesehatan.
+                    # Konversi gambar ke format JPEG & base64
+                    buffered = io.BytesIO()
+                    image.convert("RGB").save(buffered, format="JPEG")
+                    img_str = base64.b64encode(buffered.getvalue()).decode()
+
+                    headers = {
+                        "Authorization": f"Bearer {API_KEY}",
+                        "Content-Type": "application/json"
+                    }
                     
-                    Gunakan format yang rapi dan mudah dibaca.
-                    """
-                    
-                    model = genai.GenerativeModel("gemini-1.5-flash")
-                    response = model.generate_content([prompt, image])
-                    
-                    if response and response.text:
+                    payload = {
+                        "model": "google/gemini-2.0-flash-lite-001",
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": """
+                                        Analisis makanan dalam gambar ini secara mendetail:
+                                        1. Nama Makanan / Hidangan.
+                                        2. Perkiraan Porsi.
+                                        3. Perkiraan Total Kalori (kcal).
+                                        4. Rincian Makronutrisi:
+                                           - Karbohidrat (gram)
+                                           - Protein (gram)
+                                           - Lemak (gram)
+                                        5. Ringkasan singkat apakah makanan ini seimbang dan saran kesehatan.
+                                        
+                                        Gunakan format yang rapi dan mudah dibaca dalam bahasa Indonesia.
+                                        """
+                                    },
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:image/jpeg;base64,{img_str}"
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+
+                    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
+                    result = response.json()
+
+                    if "choices" in result and len(result["choices"]) > 0:
                         st.success("Analisis Selesai!")
                         st.markdown("### Hasil Analisis Gizi")
-                        st.write(response.text)
+                        st.write(result["choices"][0]["message"]["content"])
                     else:
-                        st.error("Gagal mendapatkan respons dari API.")
-                        
+                        st.error(f"Gagal memproses. Respon server: {result}")
+
                 except Exception as e:
                     st.error(f"Terjadi kesalahan: {e}")
