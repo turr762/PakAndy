@@ -4,7 +4,7 @@ from PIL import Image
 
 # Konfigurasi Halaman
 st.set_page_config(
-    page_title="Gizi Tracker AI",
+    page_title="Gizi Tracker",
     page_icon="🥗",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -74,8 +74,8 @@ API_KEY = st.secrets.get("GEMINI_API_KEY", "").strip()
 # Header Estetik
 st.markdown("""
     <div class="hero-container">
-        <div class="hero-title">🥗 Gizi Tracker AI</div>
-        <div class="hero-subtitle">Analisis makanan atau dapatkan wawasan kebugaran tubuh secara instan dengan kecerdasan buatan.</div>
+        <div class="hero-title">🥗 Gizi Tracker</div>
+        <div class="hero-subtitle">Analisis makanan atau dapatkan wawasan kebugaran tubuh.</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -110,11 +110,11 @@ if image is not None:
     
     st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
     
-    if st.button("✨ Analisis Gambar Cerdas"):
+    if st.button("Analisis"):
         if not API_KEY:
-            st.error("⚠️ GEMINI_API_KEY belum diatur di Streamlit Secrets.")
+            st.error("Terjadi error di api key")
         else:
-            with st.spinner("🤖 Gemini sedang menganalisis objek dalam foto..."):
+            with st.spinner("Loading"):
                 try:
                     # Prompt universal cerdas yang otomatis mendeteksi apakah itu makanan atau orang
                     prompt = """
