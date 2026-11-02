@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 
-# Konfigurasi Halaman
+
 st.set_page_config(
     page_title="Gizi Tracker",
     page_icon="🥗",
@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS Kustom Tingkat Lanjut (Estetik & Modern Dark Mode)
+
 st.markdown("""
     <style>
     .stApp {
@@ -68,10 +68,16 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Mengambil API Key dari Streamlit Secrets
+
 API_KEY = st.secrets.get("GEMINI_API_KEY", "").strip()
 
-# Header Estetik
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "analyzed_image" not in st.session_state:
+    st.session_state.analyzed_image = None
+
+
 st.markdown("""
     <div class="hero-container">
         <div class="hero-title">🥗 Gizi Tracker</div>
@@ -82,7 +88,7 @@ st.markdown("""
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
-# Pilihan Input Mode
+
 input_mode = st.radio(
     "Pilih metode input gambar:",
     ("📁 Upload dari Galeri", "📸 Kamera Langsung"),
@@ -102,6 +108,10 @@ else:
     if camera_photo:
         image = Image.open(camera_photo)
 
+if image != st.session_state.analyzed_image:
+    st.session_state.messages = []
+    st.session_state.analyzed_image = image
+
 if image is not None:
     st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 4, 1])
@@ -110,34 +120,74 @@ if image is not None:
     
     st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
     
-    if st.button("Analisis"):
-        if not API_KEY:
-            st.error("Terjadi error di api key")
-        else:
-            with st.spinner("Loading"):
-                try:
-                    # Prompt universal cerdas yang otomatis mendeteksi apakah itu makanan atau orang
-                    prompt = """
-                    Periksa gambar yang dilampirkan ini dengan teliti. 
-                    - KASUS A: Jika gambar ini adalah MAKANAN/MINUMAN, berikan analisis gizi mendetail mencakup: Nama Makanan, Perkiraan Porsi, Total Kalori (kcal), Makronutrisi (Karbohidrat, Protein, Lemak dalam gram), serta ringkasan saran kesehatan.
-                    - KASUS B: Jika gambar ini adalah ORANG/MANUSIA (selfie/potret), jangan hitung gizi makanan. Berikan analisis kebugaran umum secara positif dan santai mencakup: Perkiraan tingkat energi/mood, estimasi kebutuhan hidrasi harian, serta tips kebugaran/motivasi kesehatan yang relevan.
 
-                    Gunakan bahasa Indonesia dengan format markdown yang rapi, bersih, dan menarik.
-                    """
-                    
+    if len(st.session_state.messages) == 0:
+        if st.button("Analisis"):
+            if not API_KEY:
+                st.error("Terjadi error di api key")
+            else:
+                with st.spinner("Loading"):
+                    try:
+                        prompt = """
+                        Periksa gambar yang dilampirkan ini dengan teliti. 
+                        - KASUS A: Jika gambar ini adalah MAKANAN/MINUMAN, berikan analisis gizi mendetail mencakup: Nama Makanan, Perkiraan Porsi, Total Kalori (kcal), Makronutrisi (Karbohidrat, Protein, Lemak dalam gram), serta ringkasan saran kesehatan.
+                        - KASUS B: Jika gambar ini adalah ORANG/MANUSIA (selfie/potret), jangan hitung gizi makanan. Berikan analisis kebugaran umum secara positif dan santai mencakup: Perkiraan tingkat energi/mood, estimasi kebutuhan hidrasi harian, serta tips kebugaran/motivasi kesehatan yang relevan.
+
+                        Gunakan bahasa Indonesia dengan format markdown yang rapi, bersih, dan menarik.
+                        """
+                        
+
+                        model = genai.GenerativeModel("gemini-3.5-flash-lite")
+                        
+
+                        response = model.generate_content([prompt, image])
+                        
+                        if response and response.text:
+
+                            st.session_state.messages.append({"role": "user", "content": "[Gambar Makanan/Orang Diunggah]"})
+                            st.session_state.messages.append({"role": "model", "content": response.text})
+                            st.rerun() # Refresh agar UI menampilkan chat box
+                        else:
+                            st.error("Gagal mendapatkan respons dari API.")
+                    except Exception as e:
+                        st.error(f"Terjadi kesalahan: {e}")
+
+
+    if len(st.session_state.messages) > 0:
+        st.markdown("""
+            <div class="result-box">
+                <h3>📊 Hasil Pemindaian Cerdas AI</h3>
+                <hr style="border-color: #30363d;">
+        """, unsafe_allow_html=True)
+
+        for msg in st.session_state.messages:
+            if msg["role"] == "model":
+                st.markdown(msg["content"])
+            elif msg["role"] == "user" and msg["content"] != "[Gambar Makanan/Orang Diunggah]":
+
+                st.markdown(f"**🔄 Perbaikan Anda:** *{msg['content']}*")
+                
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+
+        if follow_up_prompt := st.chat_input("Ada perbaikan? (Contoh: 'Ubah ke Bahasa Inggris', 'Kurangi porsinya jadi setengah', dll)"):
+            with st.spinner("Memperbarui analisis..."):
+                try:
                     model = genai.GenerativeModel("gemini-3.5-flash-lite")
-                    response = model.generate_content([prompt, image])
+                    
+
+                    payload = [image]
+                    for msg in st.session_state.messages:
+                        payload.append(f"{msg['role']}: {msg['content']}")
+                    
+
+                    payload.append(f"user: {follow_up_prompt}. Perbaiki jawaban model sebelumnya berdasarkan instruksi user baru ini.")
+                    
+                    response = model.generate_content(payload)
                     
                     if response and response.text:
-                        st.markdown("""
-                            <div class="result-box">
-                                <h3>📊 Hasil Pemindaian Cerdas AI</h3>
-                                <hr style="border-color: #30363d;">
-                        """, unsafe_allow_html=True)
-                        st.markdown(response.text)
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    else:
-                        st.error("Gagal mendapatkan respons dari API.")
-                        
+                        st.session_state.messages.append({"role": "user", "content": follow_up_prompt})
+                        st.session_state.messages.append({"role": "model", "content": response.text})
+                        st.rerun()
                 except Exception as e:
-                    st.error(f"Terjadi kesalahan: {e}")
+                    st.error(f"Gagal memperbarui: {e}")
