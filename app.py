@@ -125,7 +125,7 @@ if image is not None:
                     Gunakan bahasa Indonesia dengan format markdown yang rapi, bersih, dan menarik.
                     """
                     
-                    model = genai.GenerativeModel("gemini-3.8-flash")
+                    model = genai.GenerativeModel("gemini-3.5-flash-lite")
                     response = model.generate_content([prompt, image])
                     
                     if response and response.text:
