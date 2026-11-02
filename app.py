@@ -50,8 +50,8 @@ if image is not None:
                     Gunakan format yang rapi dan mudah dibaca.
                     """
                     
-                    # Menggunakan model Gemini Flash
-                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    # Menggunakan model gemini-2.0-flash yang aktif dan didukung
+                    model = genai.GenerativeModel("gemini-2.0-flash")
                     response = model.generate_content([prompt, image])
                     
                     if response and response.text:
