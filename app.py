@@ -10,16 +10,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS Kustom Tingkat Lanjut (Estetik, Modern Dark Mode dengan Aksen Cyan/Hijau)
+# Custom CSS Kustom Tingkat Lanjut (Estetik & Modern Dark Mode)
 st.markdown("""
     <style>
-    /* Global Styling */
     .stApp {
         background-color: #0d1117;
         color: #e6edf3;
     }
     
-    /* Header Banner Card */
     .hero-container {
         background: linear-gradient(135deg, #161b22 0%, #1f6feb22 100%);
         border: 1px solid #30363d;
@@ -42,7 +40,6 @@ st.markdown("""
         font-size: 1rem;
     }
 
-    /* Custom Button */
     .stButton > button {
         width: 100%;
         border-radius: 10px;
@@ -60,14 +57,6 @@ st.markdown("""
         transform: translateY(-2px);
     }
 
-    /* File Uploader Customization */
-    UploadedFile {
-        border: 2px dashed #30363d !important;
-        border-radius: 12px !important;
-        background-color: #161b22 !important;
-    }
-
-    /* Result Bento Box */
     .result-box {
         background-color: #161b22;
         border: 1px solid #30363d;
@@ -86,15 +75,14 @@ API_KEY = st.secrets.get("GEMINI_API_KEY", "").strip()
 st.markdown("""
     <div class="hero-container">
         <div class="hero-title">🥗 Gizi Tracker AI</div>
-        <div class="hero-subtitle">Analisis kandungan nutrisi, kalori, dan makro makanan Anda secara instan dengan kecerdasan buatan.</div>
+        <div class="hero-subtitle">Analisis makanan atau dapatkan wawasan kebugaran tubuh secara instan dengan kecerdasan buatan.</div>
     </div>
 """, unsafe_allow_html=True)
 
-# Konfigurasi API Key ke Google GenAI
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
-# Pilihan Input Mode dengan Radio Horizontal yang Rapi
+# Pilihan Input Mode
 input_mode = st.radio(
     "Pilih metode input gambar:",
     ("📁 Upload dari Galeri", "📸 Kamera Langsung"),
@@ -110,37 +98,31 @@ if "Galeri" in input_mode:
     if uploaded_file:
         image = Image.open(uploaded_file)
 else:
-    camera_photo = st.camera_input("Ambil foto makanan Anda")
+    camera_photo = st.camera_input("Ambil foto objek")
     if camera_photo:
         image = Image.open(camera_photo)
 
-# Area Preview dan Eksekusi
 if image is not None:
     st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 4, 1])
     with col2:
-        st.image(image, caption="Preview Makanan", use_container_width=True)
+        st.image(image, caption="Preview Objek", use_container_width=True)
     
     st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
     
-    if st.button("✨ Analisis Kandungan Gizi"):
+    if st.button("✨ Analisis Gambar Cerdas"):
         if not API_KEY:
             st.error("⚠️ GEMINI_API_KEY belum diatur di Streamlit Secrets.")
         else:
-            with st.spinner("🤖 Gemini sedang memindai nutrisi makanan Anda..."):
+            with st.spinner("🤖 Gemini sedang menganalisis objek dalam foto..."):
                 try:
+                    # Prompt universal cerdas yang otomatis mendeteksi apakah itu makanan atau orang
                     prompt = """
-                    Analisis makanan dalam gambar ini secara mendetail dalam bahasa Indonesia. Berikan informasi berikut dengan terstruktur dan rapi:
-                    1. Nama Makanan / Hidangan
-                    2. Perkiraan Porsi
-                    3. Perkiraan Total Kalori (kcal)
-                    4. Rincian Makronutrisi:
-                       - Karbohidrat (gram)
-                       - Protein (gram)
-                       - Lemak (gram)
-                    5. Ringkasan singkat apakah makanan ini seimbang dan saran kesehatan.
+                    Periksa gambar yang dilampirkan ini dengan teliti. 
+                    - KASUS A: Jika gambar ini adalah MAKANAN/MINUMAN, berikan analisis gizi mendetail mencakup: Nama Makanan, Perkiraan Porsi, Total Kalori (kcal), Makronutrisi (Karbohidrat, Protein, Lemak dalam gram), serta ringkasan saran kesehatan.
+                    - KASUS B: Jika gambar ini adalah ORANG/MANUSIA (selfie/potret), jangan hitung gizi makanan. Berikan analisis kebugaran umum secara positif dan santai mencakup: Perkiraan tingkat energi/mood, estimasi kebutuhan hidrasi harian, serta tips kebugaran/motivasi kesehatan yang relevan.
 
-                    Gunakan format markdown yang bersih dan menarik.
+                    Gunakan bahasa Indonesia dengan format markdown yang rapi, bersih, dan menarik.
                     """
                     
                     model = genai.GenerativeModel("gemini-3.8-flash")
@@ -149,7 +131,7 @@ if image is not None:
                     if response and response.text:
                         st.markdown("""
                             <div class="result-box">
-                                <h3>📊 Hasil Analisis Nutrisi AI</h3>
+                                <h3>📊 Hasil Pemindaian Cerdas AI</h3>
                                 <hr style="border-color: #30363d;">
                         """, unsafe_allow_html=True)
                         st.markdown(response.text)
