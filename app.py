@@ -10,35 +10,71 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom Minimalist Styling (Clean & Zero-Slop)
+# Custom CSS Kustom Tingkat Lanjut (Estetik, Modern Dark Mode dengan Aksen Cyan/Hijau)
 st.markdown("""
     <style>
-    .main {
-        padding: 2rem 1rem;
+    /* Global Styling */
+    .stApp {
+        background-color: #0d1117;
+        color: #e6edf3;
     }
+    
+    /* Header Banner Card */
+    .hero-container {
+        background: linear-gradient(135deg, #161b22 0%, #1f6feb22 100%);
+        border: 1px solid #30363d;
+        padding: 2rem;
+        border-radius: 16px;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .hero-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: linear-gradient(90deg, #58a6ff, #3fb950);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+    .hero-subtitle {
+        color: #8b949e;
+        font-size: 1rem;
+    }
+
+    /* Custom Button */
     .stButton > button {
         width: 100%;
-        border-radius: 8px;
-        font-weight: 600;
-        padding: 0.6rem 1rem;
-        background-color: #FF4B4B;
+        border-radius: 10px;
+        font-weight: 700;
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
         color: white;
         border: none;
-        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(35, 134, 54, 0.4);
+        transition: all 0.3s ease;
     }
     .stButton > button:hover {
-        background-color: #E03E3E;
-        box-shadow: 0 4px 12px rgba(255, 75, 75, 0.2);
+        background: linear-gradient(135deg, #2ea043 0%, #3fb950 100%);
+        box-shadow: 0 6px 16px rgba(63, 185, 80, 0.6);
+        transform: translateY(-2px);
     }
-    div.stRadio > label {
-        font-weight: 500;
+
+    /* File Uploader Customization */
+    UploadedFile {
+        border: 2px dashed #30363d !important;
+        border-radius: 12px !important;
+        background-color: #161b22 !important;
     }
-    .metric-card {
-        background-color: #1E1E1E;
-        border: 1px solid #333333;
-        padding: 1rem;
-        border-radius: 8px;
-        text-align: center;
+
+    /* Result Bento Box */
+    .result-box {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -46,52 +82,55 @@ st.markdown("""
 # Mengambil API Key dari Streamlit Secrets
 API_KEY = st.secrets.get("GEMINI_API_KEY", "").strip()
 
-# Header Minimalis
-st.title("🥗 Gizi Tracker AI")
-st.markdown("Analisis kandungan nutrisi dan kalori makanan Anda secara instan menggunakan kecerdasan buatan.")
-st.markdown("---")
+# Header Estetik
+st.markdown("""
+    <div class="hero-container">
+        <div class="hero-title">🥗 Gizi Tracker AI</div>
+        <div class="hero-subtitle">Analisis kandungan nutrisi, kalori, dan makro makanan Anda secara instan dengan kecerdasan buatan.</div>
+    </div>
+""", unsafe_allow_html=True)
 
 # Konfigurasi API Key ke Google GenAI
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
-# Pemilihan Sumber Gambar dengan Tampilan Bersih
+# Pilihan Input Mode dengan Radio Horizontal yang Rapi
 input_mode = st.radio(
     "Pilih metode input gambar:",
-    ("Upload dari Galeri", "Kamera Langsung"),
+    ("📁 Upload dari Galeri", "📸 Kamera Langsung"),
     horizontal=True,
-    label_visibility="collapsed"
 )
 
-st.markdown("")
+st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
 
 image = None
 
-if input_mode == "Upload dari Galeri":
-    uploaded_file = st.file_uploader("Pilih file gambar (JPG, PNG, WEBP)", type=["jpg", "jpeg", "png", "webp"])
+if "Galeri" in input_mode:
+    uploaded_file = st.file_uploader("Format yang didukung: JPG, JPEG, PNG, WEBP", type=["jpg", "jpeg", "png", "webp"])
     if uploaded_file:
         image = Image.open(uploaded_file)
 else:
-    camera_photo = st.camera_input("Ambil foto makanan langsung")
+    camera_photo = st.camera_input("Ambil foto makanan Anda")
     if camera_photo:
         image = Image.open(camera_photo)
 
-# Area Tampilan & Aksi
+# Area Preview dan Eksekusi
 if image is not None:
-    col1, col2, col3 = st.columns([1, 6, 1])
+    st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 4, 1])
     with col2:
-        st.image(image, caption="Foto Makanan Dipilih", use_container_width=True)
+        st.image(image, caption="Preview Makanan", use_container_width=True)
     
-    st.markdown("")
+    st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
     
-    if st.button("🔍 Mulai Analisis Gizi"):
+    if st.button("✨ Analisis Kandungan Gizi"):
         if not API_KEY:
             st.error("⚠️ GEMINI_API_KEY belum diatur di Streamlit Secrets.")
         else:
-            with st.spinner("Menganalisis kandungan gizi dengan Gemini 3.8 Flash..."):
+            with st.spinner("🤖 Gemini sedang memindai nutrisi makanan Anda..."):
                 try:
                     prompt = """
-                    Analisis makanan dalam gambar ini secara mendetail dalam bahasa Indonesia. Berikan informasi berikut dengan terstruktur:
+                    Analisis makanan dalam gambar ini secara mendetail dalam bahasa Indonesia. Berikan informasi berikut dengan terstruktur dan rapi:
                     1. Nama Makanan / Hidangan
                     2. Perkiraan Porsi
                     3. Perkiraan Total Kalori (kcal)
@@ -101,17 +140,20 @@ if image is not None:
                        - Lemak (gram)
                     5. Ringkasan singkat apakah makanan ini seimbang dan saran kesehatan.
 
-                    Gunakan format markdown yang rapi, bersih, dan mudah dibaca.
+                    Gunakan format markdown yang bersih dan menarik.
                     """
                     
                     model = genai.GenerativeModel("gemini-3.8-flash")
                     response = model.generate_content([prompt, image])
                     
                     if response and response.text:
-                        st.success("Analisis Berhasil!")
-                        st.markdown("---")
-                        st.markdown("### 📊 Hasil Analisis Nutrisi")
+                        st.markdown("""
+                            <div class="result-box">
+                                <h3>📊 Hasil Analisis Nutrisi AI</h3>
+                                <hr style="border-color: #30363d;">
+                        """, unsafe_allow_html=True)
                         st.markdown(response.text)
+                        st.markdown("</div>", unsafe_allow_html=True)
                     else:
                         st.error("Gagal mendapatkan respons dari API.")
                         
