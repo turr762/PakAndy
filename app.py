@@ -1,16 +1,18 @@
 import streamlit as st
-import requests
-import base64
+import google.generativeai as genai
 from PIL import Image
-import io
 
 st.set_page_config(page_title="Gizi Tracker AI", page_icon="🥗", layout="centered")
 
-# Mengambil OpenRouter API Key dari Streamlit Secrets
-API_KEY = st.secrets.get("OPENROUTER_API_KEY", "").strip()
+# Mengambil API Key dari Streamlit Secrets
+API_KEY = st.secrets.get("GEMINI_API_KEY", "").strip()
 
 st.title("🥗 Gizi Tracker AI")
 st.write("Upload atau ambil foto makanan untuk menganalisis kandungan gizinya.")
+
+# Konfigurasi API Key ke Google GenAI
+if API_KEY:
+    genai.configure(api_key=API_KEY)
 
 option = st.radio("Pilih sumber gambar:", ("Upload dari Galeri", "Kamera Langsung"))
 
@@ -30,29 +32,11 @@ if image is not None:
     
     if st.button("🔍 Analisis Gizi"):
         if not API_KEY:
-            st.error("⚠️ OPENROUTER_API_KEY belum diatur di Streamlit Secrets!")
+            st.error("⚠️ GEMINI_API_KEY belum diatur di Streamlit Secrets!")
         else:
-            with st.spinner("Sedang menganalisis gizi makanan dengan AI..."):
+            with st.spinner("Sedang menganalisis gizi makanan dengan Gemini..."):
                 try:
-                    # Konversi gambar ke JPEG & base64
-                    buffered = io.BytesIO()
-                    image.convert("RGB").save(buffered, format="JPEG")
-                    img_str = base64.b64encode(buffered.getvalue()).decode()
-
-                    headers = {
-                        "Authorization": f"Bearer {API_KEY}",
-                        "Content-Type": "application/json"
-                    }
-
-                    # Daftar model Vision aktif di OpenRouter
-                    candidate_models = [
-                        "google/gemini-2.0-flash-exp:free",
-                        "google/gemini-flash-1.5-exp",
-                        "qwen/qwen-2-vl-72b-instruct:free",
-                        "openrouter/auto"
-                    ]
-
-                    prompt_text = """
+                    prompt = """
                     Analisis makanan dalam gambar ini secara mendetail dalam bahasa Indonesia:
                     1. Nama Makanan / Hidangan.
                     2. Perkiraan Porsi.
@@ -65,51 +49,17 @@ if image is not None:
 
                     Gunakan format yang rapi dan mudah dibaca.
                     """
-
-                    result = None
-                    used_model = ""
-                    last_error_msg = ""
-
-                    for model_name in candidate_models:
-                        payload = {
-                            "model": model_name,
-                            "messages": [
-                                {
-                                    "role": "user",
-                                    "content": [
-                                        {"type": "text", "text": prompt_text},
-                                        {
-                                            "type": "image_url",
-                                            "image_url": {
-                                                "url": f"data:image/jpeg;base64,{img_str}"
-                                            }
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-
-                        response = requests.post(
-                            "https://openrouter.ai/api/v1/chat/completions",
-                            headers=headers,
-                            json=payload
-                        )
-                        
-                        res_json = response.json()
-
-                        if "choices" in res_json and len(res_json["choices"]) > 0:
-                            result = res_json
-                            used_model = model_name
-                            break
-                        else:
-                            last_error_msg = str(res_json)
-
-                    if result:
-                        st.success(f"Analisis Selesai! (Model: {used_model})")
+                    
+                    # Menggunakan model Gemini Flash
+                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    response = model.generate_content([prompt, image])
+                    
+                    if response and response.text:
+                        st.success("Analisis Selesai!")
                         st.markdown("### Hasil Analisis Gizi")
-                        st.write(result["choices"][0]["message"]["content"])
+                        st.write(response.text)
                     else:
-                        st.error(f"Gagal memproses dengan model pilihan. Error: {last_error_msg}")
-
+                        st.error("Gagal mendapatkan respons dari API.")
+                        
                 except Exception as e:
-                    st.error(f"Terjadi kesalahan sistem: {e}")
+                    st.error(f"Terjadi kesalahan: {e}")
