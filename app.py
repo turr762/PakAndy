@@ -34,7 +34,7 @@ if image is not None:
         if not API_KEY:
             st.error("⚠️ GEMINI_API_KEY belum diatur di Streamlit Secrets!")
         else:
-            with st.spinner("Sedang menganalisis gizi makanan dengan Gemini..."):
+            with st.spinner("Sedang menganalisis gizi makanan dengan Gemini 3.8 Flash..."):
                 try:
                     prompt = """
                     Analisis makanan dalam gambar ini secara mendetail dalam bahasa Indonesia:
@@ -50,8 +50,8 @@ if image is not None:
                     Gunakan format yang rapi dan mudah dibaca.
                     """
                     
-                    # Menggunakan model gemini-2.0-flash yang aktif dan didukung
-                    model = genai.GenerativeModel("gemini-2.0-flash")
+                    # Menggunakan model gemini-3.8-flash sesuai update terbaru
+                    model = genai.GenerativeModel("gemini-3.8-flash")
                     response = model.generate_content([prompt, image])
                     
                     if response and response.text:
